@@ -18,6 +18,8 @@ msg:
     .asciz "Hello World\n"
 title:
     .asciz "Hello World from asm"
+fmt:
+    .asciz "%zu\n"
 y:
     .zero 4
 
@@ -42,12 +44,55 @@ main:
     call InitWindow
 
     //void SetTargetFPS(int fps)
-    mov $10, %edi
+    mov $60, %edi
     call SetTargetFPS
 
     jmp .loop_check
 .loop:
     // main loop
+    // update
+    .set KEY_S, 83
+    .set KEY_W, 87
+    mov $KEY_S, %edi
+    call IsKeyDown
+    test %al,%al
+    jz .w_not_down
+    //is down
+    mov (y), %esi
+    inc %esi
+    mov %esi, (y)
+.w_not_down:
+
+    mov $KEY_W, %edi
+    call IsKeyDown
+    test %al,%al
+    jz .s_not_down
+    //is down
+    mov (y), %esi
+    dec %esi
+    mov %esi, (y)
+.s_not_down:
+
+    //clamp
+    //if y<0 then y=0
+    //loading y -> esi
+    mov (y), %esi
+    // 0>esi
+    cmp $0, %esi
+    jg .y_not_zero
+    //then y=0
+    xor %esi,%esi
+    mov %esi, (y)
+.y_not_zero:
+    //if 350>y then y=350
+    mov (y), %esi
+    cmp $350, %esi
+    jl .y_l_350
+    mov $350, %esi
+    mov %esi, (y)
+.y_l_350:
+
+    //draw
     call BeginDrawing
 
     mov $0xff562700,%edi
@@ -61,29 +106,22 @@ main:
     mov $0xffffffff,%r8
     call DrawRectangle
 
-    .set KEY_S $83
-    .set KEY_W $87
-    mov $KEY_S, rdi
-    call IsKeyDown
-    test al,al
-    jz .not_down
-    //is down
-    
-.not_down:
 
-    mov (y), %esi
-    inc %esi
-    mov %esi, (y)
+
 
     call EndDrawing
 
 .loop_check:
     // end main loop
     call WindowShouldClose
-    cmp $0, %al
-    je .loop
+    test %al, %al
+    //if 0, shouldn't close, then loop
+    jz .loop
 .done:
+    // mov %rsp, %rbp
 
     // exit
     mov $0, %rax
-    leave
+    // mov %rbp, %rsp
+    pop %rbp
+    ret
